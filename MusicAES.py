@@ -6,6 +6,8 @@ import struct
 import math
 import os, sys
 import hashlib
+import subprocess
+from requests import exceptions
 from Cryptodome.Cipher import AES
 from Cryptodome.Random import get_random_bytes
 from base64 import b64encode
@@ -17,6 +19,14 @@ fs= 44100               #Sample Hz
 scales = 8              #Amount of musical scales to work with (12 semitones)
 detected_notes = []     #Array to store detected notes
 detected_freqs = []     #Array to store detected frequencies
+downloads_path = 'media_tmp'
+
+def printHelp():
+    print("***Usage steps***")
+    print("----------------------------------------")
+    print("To encrypt: AudioAES.py -e 'text_to_encript' <audiopassfile>")
+    print("To decrypt: AudioAES.py -d 'encrypted_text' <audiopassfile>")
+    print("If you just call the program without arguments, it will ask for them")
 
 #Function to find the closer element in an array
 def closest(lst, K): 
@@ -58,8 +68,8 @@ def removeRepeatedNotes(detected_notes):
 #Almost all the magic is done in this function. It reads, splits, operates and detect frequencies.
 def noteDetect(audio_file):
     file_length = audio_file.getnframes()
-    window_size = int(file_length*0.025) 
-    print('Longitud: '+str(window_size))
+    window_size = int(file_length*0.01) 
+    print('Audio Length: '+str(window_size))
     
     #Clearing arrays to allow reuse of function
     detected_freqs.clear()
@@ -83,6 +93,36 @@ def noteDetect(audio_file):
             detected_notes.append(matchingFreq(freq))
     
     return removeRepeatedNotes(detected_notes)
+
+def soundProcessing(file_name):
+    try:
+            
+        filename_no_ext = file_name[0:len(file_name)-4]     #Just deletes .mp4
+        #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
+        command= f"ffmpeg -i '{downloads_path}/{file_name}' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{filename_no_ext}.wav'"
+        #DEBUG print(command) 
+        print(f'Converting to wav: {filename_no_ext}')
+        subprocess.call(command, shell=True)
+        sound_file = wave.open( f'{downloads_path}/{filename_no_ext}.wav', 'r')
+        print('Conversion completed. Now starting to analize.')
+        filtered_notes= noteDetect(sound_file)
+        print("Approximated Notes: " + str(filtered_notes))
+    except IOError:
+        print('[Error] reading file')
+
+def getYoutubeMedia(isAudio=True):
+    try:
+        ytlink = input('YouTube link that you will use as passphrase: ')
+        print('Downloading stream (audio/video), wait a bit')
+        yt = YouTube(ytlink, on_complete_callback=downloadedTrigger)
+        stream = yt.streams.filter(only_audio=isAudio).first()
+        stream.download(downloads_path)
+        return stream.default_filename
+    except request.exceptions.RequestException:
+        print ("[Error] downloading file.")
+
+def downloadedTrigger(stream, file_handle):
+    print('Download Completed')
 
 def encrypt(plain_text, password):
     # generate a random salt
@@ -125,29 +165,15 @@ def decrypt(enc_dict, password):
 
 
 
-
 if __name__ == "__main__":
-    if(len(sys.argv) < 4 or sys.argv[1]=='-h'):
-        print("***Usage steps***")
-        print("----------------------------------------")
-        print("To encrypt: AudioAES.py -e 'text_to_encript' <audiopassfile>")
-        print("To decrypt: AudioAES.py -d 'encrypted_text' <audiopassfile>")
-    try:
-        YouTube('https://www.youtube.com/watch?v=kh1sF-sbkbw').streams.first().download()
-        print(stream = yt.streams.filter(only_audio=True).first())
-        stream.download()
-        sound_file = wave.open( sys.argv[3] , 'r')
-        filtered_notes= noteDetect(sound_file)
-        print("Approximated Notes: " + str(filtered_notes))
-    except IOError:
-        print ("Error opening file")
-    key=''
-    for note in detected_notes:
-        key += note
-    print ("Key: " + key)
-    enc_dict = encrypt(sys.argv[2],key)
-    print ("Encrypted data:" + str(enc_dict))
-    print("Original data:" + str(decrypt(enc_dict, key)))
+    if(sys.argv[0]=='-h' or sys.argv[0]=='--help'):
+        printHelp()
+    else:
+        soundProcessing(getYoutubeMedia(isAudio=True))
+        key=''
+        for note in detected_notes:
+            key += note
+        print ("Key: " + key)
 
 
     
