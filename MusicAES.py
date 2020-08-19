@@ -5,12 +5,12 @@ import wave
 from pydub import AudioSegment
 import struct
 import math
-import os, sys
+import os, sys, glob
 import hashlib
 import subprocess
 from requests import exceptions
 from pytube import YouTube
-from AESCipher import AESCipher
+from AESCipher import AESCipher 
 
 fs= 44100               #Sample Hz
 scales = 8              #Amount of musical scales to work with (12 semitones)
@@ -23,8 +23,10 @@ key= ''
 def printHelp():
     print("***Usage steps***")
     print("----------------------------------------")
-    print("To encrypt: AudioAES.py -e 'text_to_encript' <audiopassfile>")
-    print("To decrypt: AudioAES.py -d 'encrypted_text' <audiopassfile>")
+    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' <YoutubeLink>")
+    print("To encrypt file: AudioAES.py -e -f 'file_to_encrypt' <YoutubeLink>")
+    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' <YoutubeLink>")
+    print("To encrypt file: AudioAES.py -d -f 'file_to_encrypt' <YoutubeLink>")
     print("If you just call the program without arguments, it will ask for them")
 
 #Function to find the closer element in an array
@@ -84,11 +86,11 @@ def noteDetect(audio_file):
         #DEBUG print("Fourier (abs) value: " + str(i_max))
         freq = round((i_max * fs)/len(sound),3) #Freqs rounded to 3 decimals
         detected_freqs.append(freq)
-    print('-----RAW Frequencies array-----')
-    print(*detected_freqs)
+    #DEBUGprint('-----RAW Frequencies array-----')
+    #DEBUGprint(*detected_freqs)
     clean_freqs = filterFrequencyArray(detected_freqs)
-    print('-----Cleaned Frequencies array-----')
-    print(*clean_freqs)
+    #DEBUGprint('-----Cleaned Frequencies array-----')
+    #DEBUGprint(*clean_freqs)
     for freq in clean_freqs:
             detected_notes.append(matchingFreq(freq))
     
@@ -100,7 +102,7 @@ def soundProcessing(file_name):
         print('Conversion completed. Now starting to analize.')
         print('----------------------------------------------')
         filtered_notes= noteDetect(sound_file)
-        print("Approximated Notes: " + str(filtered_notes))
+        #DEBUG print("Approximated Notes: " + str(filtered_notes))
     except IOError:
         print('[Error] reading file')
 
@@ -121,7 +123,7 @@ def splitAudio(t1,t2,input_file):
 
 def convertToWav(file_name):
         #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
-        command= f"ffmpeg -i '{downloads_path}/{file_name}' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
+        command= f"ffmpeg -i '{downloads_path}/{file_name}.mp4' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
         #DEBUG print(command) 
         print(f'Converting to wav: {file_name}')
         subprocess.call(command, shell=True)
@@ -145,10 +147,12 @@ if __name__ == "__main__":
         printHelp()
     else:
         file_name=getYoutubeMedia(isAudio=True)
-        filename_no_ext = file_name[0:len(file_name)-4]     #Just deletes .mp4
-        convertToWav(file_name)
-        print('(2/6) Do you wanna use audio splitting to increase security?(y/N):')
-        isSplitted=input('For decrypt mode, splitting must be selected if you selected it to encypt(Y/N): ')
+        print(file_name)
+        filename_no_ext = file_name[0:len(file_name)-4]
+        print(filename_no_ext)     #Just deletes .mp4
+        convertToWav(filename_no_ext)
+        print('(2/6) Do you wanna use audio splitting to increase security?')
+        isSplitted=input('For decrypt mode, splitting must be selected if you selected it to encypt(y/N): ')
         if(isSplitted=='y'):
             startTime= input('(3/6) Choose splitting start in seconds: ')
             finishTime = input('(4/6) Choose splitting end  in seconds: ')
@@ -169,7 +173,10 @@ if __name__ == "__main__":
             opText=input('(6/6) Text to decrypt?: ')
             print(f'Decrypted text: {aes.decrypt(opText)}')
         #COMMENT KEY PRINTING ON PRODUCTION
-        print ("Key: " + key)
+        #DEBUG print ("Key: " + key)
+        files = glob.glob(f'{downloads_path}/*')
+        for f in files:
+            os.remove(f)
         
 
 
