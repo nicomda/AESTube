@@ -86,6 +86,7 @@ def noteDetect(audio_file):
         #DEBUG print("Fourier (abs) value: " + str(i_max))
         freq = round((i_max * fs)/len(sound),3) #Freqs rounded to 3 decimals
         detected_freqs.append(freq)
+    audio_file.close() #Close audio file
     #DEBUGprint('-----RAW Frequencies array-----')
     #DEBUGprint(*detected_freqs)
     clean_freqs = filterFrequencyArray(detected_freqs)
@@ -101,6 +102,7 @@ def soundProcessing(file_name):
         sound_file = wave.open( f'{downloads_path}/{file_name}.wav', 'r')
         print('Conversion completed. Now starting to analize.')
         print('----------------------------------------------')
+        Wave_read.close()
         filtered_notes= noteDetect(sound_file)
         #DEBUG print("Approximated Notes: " + str(filtered_notes))
     except IOError:
@@ -176,7 +178,7 @@ if __name__ == "__main__":
         #DEBUG print ("Key: " + key)
         files = glob.glob(f'{downloads_path}/*')
         for f in files:
-            os.remove(f)
+            os.remove(f)    #Deleting remaining media files
         
 
 
