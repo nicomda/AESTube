@@ -2,24 +2,23 @@
 import numpy as np
 import pyaudio
 import wave
+from pydub import AudioSegment
 import struct
 import math
 import os, sys
 import hashlib
 import subprocess
 from requests import exceptions
-from Cryptodome.Cipher import AES
-from Cryptodome.Random import get_random_bytes
-from base64 import b64encode
-from base64 import b64decode
 from pytube import YouTube
-
+from AESCipher import AESCipher
 
 fs= 44100               #Sample Hz
 scales = 8              #Amount of musical scales to work with (12 semitones)
+duration = 0            #Audio duration in ms to control splitting
 detected_notes = []     #Array to store detected notes
 detected_freqs = []     #Array to store detected frequencies
 downloads_path = 'media_tmp'
+key= ''
 
 def printHelp():
     print("***Usage steps***")
@@ -69,7 +68,7 @@ def removeRepeatedNotes(detected_notes):
 def noteDetect(audio_file):
     file_length = audio_file.getnframes()
     window_size = int(file_length*0.01) 
-    print('Audio Length: '+str(window_size))
+    print(f'Audio Length: {str(window_size)} bytes')
     
     #Clearing arrays to allow reuse of function
     detected_freqs.clear()
@@ -85,9 +84,10 @@ def noteDetect(audio_file):
         #DEBUG print("Fourier (abs) value: " + str(i_max))
         freq = round((i_max * fs)/len(sound),3) #Freqs rounded to 3 decimals
         detected_freqs.append(freq)
+    print('-----RAW Frequencies array-----')
     print(*detected_freqs)
     clean_freqs = filterFrequencyArray(detected_freqs)
-    print('Cleaned')
+    print('-----Cleaned Frequencies array-----')
     print(*clean_freqs)
     for freq in clean_freqs:
             detected_notes.append(matchingFreq(freq))
@@ -96,24 +96,40 @@ def noteDetect(audio_file):
 
 def soundProcessing(file_name):
     try:
-            
-        filename_no_ext = file_name[0:len(file_name)-4]     #Just deletes .mp4
-        #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
-        command= f"ffmpeg -i '{downloads_path}/{file_name}' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{filename_no_ext}.wav'"
-        #DEBUG print(command) 
-        print(f'Converting to wav: {filename_no_ext}')
-        subprocess.call(command, shell=True)
-        sound_file = wave.open( f'{downloads_path}/{filename_no_ext}.wav', 'r')
+        sound_file = wave.open( f'{downloads_path}/{file_name}.wav', 'r')
         print('Conversion completed. Now starting to analize.')
+        print('----------------------------------------------')
         filtered_notes= noteDetect(sound_file)
         print("Approximated Notes: " + str(filtered_notes))
     except IOError:
         print('[Error] reading file')
 
+def splitAudio(t1,t2,input_file):
+    start_time= int(t1)*1000 #Works in ms
+    finish_time= int(t2)*1000
+    newAudio = AudioSegment.from_wav(f'{downloads_path}/{input_file}.wav')
+    duration = len(newAudio)
+    if(start_time<duration and (duration-start_time)>finish_time and finish_time>start_time):
+        newAudio = newAudio[start_time:finish_time]
+        filename_no_ext = file_name[0:len(file_name)-4]     #Just deletes extension
+        filename_output = f'{filename_no_ext}_split.wav'
+        newAudio.export(f'{downloads_path}/{filename_output}', format='wav')
+        return True
+    print('[Error] splitting file')    
+    return False
+
+
+def convertToWav(file_name):
+        #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
+        command= f"ffmpeg -i '{downloads_path}/{file_name}' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
+        #DEBUG print(command) 
+        print(f'Converting to wav: {file_name}')
+        subprocess.call(command, shell=True)
+
 def getYoutubeMedia(isAudio=True):
     try:
         ytlink = input('YouTube link that you will use as passphrase: ')
-        print('Downloading stream (audio/video), wait a bit')
+        print('Downloading stream (audio), wait a bit') #TODO Maybe video streams support
         yt = YouTube(ytlink, on_complete_callback=downloadedTrigger)
         stream = yt.streams.filter(only_audio=isAudio).first()
         stream.download(downloads_path)
@@ -124,56 +140,37 @@ def getYoutubeMedia(isAudio=True):
 def downloadedTrigger(stream, file_handle):
     print('Download Completed')
 
-def encrypt(plain_text, password):
-    # generate a random salt
-    salt = get_random_bytes(AES.block_size)
-
-    # use the Scrypt KDF to get a private key from the password
-    private_key = hashlib.scrypt(
-        password.encode(), salt=salt, n=2**14, r=8, p=1, dklen=32)
-
-    # create cipher config
-    cipher_config = AES.new(private_key, AES.MODE_GCM)
-
-    # return a dictionary with the encrypted text
-    cipher_text, tag = cipher_config.encrypt_and_digest(bytes(plain_text, 'utf-8'))
-    return {
-        'cipher_text': b64encode(cipher_text).decode('utf-8'),
-        'salt': b64encode(salt).decode('utf-8'),
-        'nonce': b64encode(cipher_config.nonce).decode('utf-8'),
-        'tag': b64encode(tag).decode('utf-8')
-    }
-
-def decrypt(enc_dict, password):
-    # decode the dictionary entries from base64
-    salt = b64decode(enc_dict['salt'])
-    cipher_text = b64decode(enc_dict['cipher_text'])
-    nonce = b64decode(enc_dict['nonce'])
-    tag = b64decode(enc_dict['tag'])
-    
-    # generate the private key from the password and salt
-    private_key = hashlib.scrypt(
-        password.encode(), salt=salt, n=2**14, r=8, p=1, dklen=32)
-
-    # create the cipher config
-    cipher = AES.new(private_key, AES.MODE_GCM, nonce=nonce)
-
-    # decrypt the cipher text
-    decrypted = cipher.decrypt_and_verify(cipher_text, tag)
-
-    return decrypted
-
-
-
 if __name__ == "__main__":
     if(sys.argv[0]=='-h' or sys.argv[0]=='--help'):
         printHelp()
     else:
-        soundProcessing(getYoutubeMedia(isAudio=True))
+        file_name=getYoutubeMedia(isAudio=True)
+        filename_no_ext = file_name[0:len(file_name)-4]     #Just deletes .mp4
+        convertToWav(file_name)
+        print('(2/6) Do you wanna use audio splitting to increase security?(y/N):')
+        isSplitted=input('For decrypt mode, splitting must be selected if you selected it to encypt(Y/N): ')
+        if(isSplitted=='y'):
+            startTime= input('(3/6) Choose splitting start in seconds: ')
+            finishTime = input('(4/6) Choose splitting end  in seconds: ')
+            splitAudio(startTime,finishTime,filename_no_ext)
+            soundProcessing(f'{filename_no_ext}_split')
+        else:
+            soundProcessing(filename_no_ext)
+        opMode = input('(5/6) Do you want to encrypt or decrypt?(E/D): ')
+        opText = ''
         key=''
         for note in detected_notes:
-            key += note
+            key += note 
+        aes=AESCipher(key)
+        if(opMode=='E'):
+            opText=input('(6/6) Text to encrypt?: ')
+            print(f'Encrypted text: {aes.encrypt(opText)}')
+        else:
+            opText=input('(6/6) Text to decrypt?: ')
+            print(f'Decrypted text: {aes.decrypt(opText)}')
+        #COMMENT KEY PRINTING ON PRODUCTION
         print ("Key: " + key)
+        
 
 
     
