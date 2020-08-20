@@ -5,7 +5,7 @@ import wave
 from pydub import AudioSegment
 import struct
 import math
-import os, sys, glob
+import os, sys, glob, getopt
 import hashlib
 import subprocess
 import base64
@@ -18,16 +18,16 @@ scales = 8              #Amount of musical scales to work with (12 semitones)
 duration = 0            #Audio duration in ms to control splitting
 detected_notes = []     #Array to store detected notes
 detected_freqs = []     #Array to store detected frequencies
-downloads_path = 'media_tmp'
+downloads_path = '/tmp/media_tmp'
 key= ''
 
 def printHelp():
     print("***Usage steps***")
     print("----------------------------------------")
-    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -e -f 'file_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
-    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -d -f 'file_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -e -f <file_to_encrypt> 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -d -f <file_to_encrypt> 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
     print("If you just call the program without arguments, it will ask for them in interactive mode")
 
 #Function to find the closer element in an array
@@ -119,7 +119,7 @@ def splitAudio(t1,t2,input_file):
         filename_output = f'{filename_no_ext}_split.wav'
         newAudio.export(f'{downloads_path}/{filename_output}', format='wav')
         return True
-    print('[Error] splitting file')    
+    print('[Error] splitting file. Maybe trying to split bigger than audio.')    
     return False
 
 def convertToWav(file_name):
@@ -131,7 +131,6 @@ def convertToWav(file_name):
 
 def getYoutubeMedia(ytlink, isAudio=True):
     try:
-        ytlink = input('YouTube link that you will use as passphrase: ')
         print('Downloading stream (audio), wait a bit') #TODO Maybe video streams support
         yt = YouTube(ytlink, on_complete_callback=downloadedTrigger)
         stream = yt.streams.filter(only_audio=isAudio).first()
@@ -153,9 +152,17 @@ def binReadToB64(filepath):
         print('[Error] Reading file to encrypt')
         sys.exit()
 
+def binWriteToFile(data,filename):
+    try:
+        newFile = open(filename, 'wb')
+        newFile.write(bytes(data, 'utf-8'))
+        newFile.close()
+    except IOError:
+        print('[Error] Writing to file')
+
 if __name__ == "__main__":
     ytLink = ''
-    opText = ''
+    opData = ''
     opMode = ''
     opType = ''
     isInteractive = False
@@ -168,11 +175,10 @@ if __name__ == "__main__":
         isInteractive = True
         ytLink = input('(1/6)YouTube link that you will use as passphrase: ')
         print('(2/6) Do you wanna use audio splitting to increase security?')
-        isSplitted = input('For decrypt mode, splitting must be selected if you selected it to encypt(y/N): ')
-        startTime= input('(3/6) Choose splitting start in seconds: ')
-        endTime = input('(4/6) Choose splitting end  in seconds: ')
+        if(input('For decrypt mode, splitting must be selected if you selected it to encrypt(y/N): ') == 'y'):
+            isSplitted = True
         opMode = input('(5/6) Do you want to encrypt or decrypt?(E/D): ')
-        opType=input('(6/6) Which kind?(T)ext or (F)ile: ')
+        opType = input('(6/6) Which kind?(T)ext or (F)ile: ')
         #TODO INTERACTIVE MODE
     #Print help
     elif(sys.argv[1]=='-h' or sys.argv[1]=='--help'):
@@ -186,9 +192,9 @@ if __name__ == "__main__":
         else:
             isInvalid = True
         if(sys.argv[2]=='-t'):
-            opMode = 'T'
+            opType = 'T'
         elif(sys.argv[2]=='-f'):
-            opMode = 'F'
+            opType = 'F'
         else:
             isInvalid = True
         if(len(sys.argv)>4):
@@ -199,37 +205,57 @@ if __name__ == "__main__":
             else:
                 isInvalid = True
         ytLink = sys.argv[4]
-
+        opData = sys.argv[3]
+    #Creating tmp directory
+    if(not os.path.isdir(downloads_path)):
+        try:
+            os.mkdir(downloads_path)
+        except OSError:
+            print (f'Creation of the directory {downloads_path} failed')
+        else:
+            print (f'Successfully created the directory {downloads_path} ')
+    #Downloading audio
     file_name=getYoutubeMedia(ytLink,isAudio=True) #TODO Set ytLink
     print(file_name)
     filename_no_ext = file_name[0:len(file_name)-4]
     print(filename_no_ext)     #Just deletes .mp4
-    convertToWav(filename_no_ext) 
+    #Converting to wav
+    convertToWav(filename_no_ext)
+    #Splitting if selected 
     if(isSplitted):
         startTime= input('(3/6) Choose splitting start in seconds: ')
         finishTime = input('(4/6) Choose splitting end  in seconds: ')
-        splitAudio(startTime,finishTime,filename_no_ext)
-        soundProcessing(f'{filename_no_ext}_split')
+        if(splitAudio(startTime,endTime,filename_no_ext)):
+            sys.exit() #Exit if there's problems while splitting
+        soundProcessing(f'{filename_no_ext}_split')     #Sound processing
     else:
         soundProcessing(filename_no_ext)
+    #Creating key for encryption
     key=''
     for note in detected_notes:
         key += note 
     aes=AESCipher(key)
-    
-    if(opMode=='E'):
-        if(isInteractive):
-            opText=input('(6/6) Text to encrypt?: ')
-        print(f'Encrypted text: {aes.encrypt(opText)}')
-        if(opType=='-f'):
-            opText=binReadToB64(argv[3])
-        else:
-            opText=argv[3]
+    if(opMode=='E'): #Encryption
+        if(opType=='T'): #Text mode
+            if(isInteractive):
+                opData=input('(6/6) Text to encrypt?: ')
+            print(f'Encrypted text: {aes.encrypt(opData)}')
+        else:   #File mode
+            if(isInteractive):
+                opData = input('(6/6) File to encrypt?: ')
+            encryptedData = aes.encrypt(base64.b64decode(binReadToB64(opData)).decode('utf-8'))
+            binWriteToFile(base64.decodebytes(encryptedData), f'{opData}.aenc')
     else:
-        opText=input('(6/6) Text to decrypt?: ')
-        print(f'Decrypted text: {aes.decrypt(opText)}')
-        #COMMENT KEY PRINTING ON PRODUCTION
-        #DEBUG print ("Key: " + key)
+        if(opType=='T'): #Text mode
+            if(isInteractive):
+                opData=input('(6/6) Text to decrypt?: ')
+            print(f'Decrypted text: {aes.decrypt(opData)}')
+        else:   #File mode
+            if(isInteractive):
+                opData = input('(6/6) File to decrypt?: ')
+            decryptedData = aes.decrypt(binReadToB64(opData))
+            binWriteToFile(decryptedData, opData[0:len(opData)-5]) #Binary write deleting aenc extension
+
     files = glob.glob(f'{downloads_path}/*')
     for f in files:
         os.remove(f)    #Deleting remaining media files
