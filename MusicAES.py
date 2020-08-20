@@ -143,19 +143,19 @@ def getYoutubeMedia(ytlink, isAudio=True):
 def downloadedTrigger(stream, file_handle):
     print('Download Completed')
 
-def binReadToB64(filepath):
+def readBinFileToString(filepath):
     try:
         raw_data = open(filepath, "rb").read()
-        b64_string = base64.b64encode(raw_data)
-        return b64_string
+        b64_string = base64.b64encode(raw_data) #To base64
+        return base64.b64decode(b64_string).decode('utf-8') #To utf-8 string
     except IOError:
         print('[Error] Reading file to encrypt')
         sys.exit()
 
-def binWriteToFile(data,filename):
+def writeBinToFile(data,filename):
     try:
         newFile = open(filename, 'wb')
-        newFile.write(bytes(data, 'utf-8'))
+        newFile.write(bytes(base64.decodebytes(data), 'utf-8')) #Convert to bytes
         newFile.close()
     except IOError:
         print('[Error] Writing to file')
@@ -243,8 +243,8 @@ if __name__ == "__main__":
         else:   #File mode
             if(isInteractive):
                 opData = input('(6/6) File to encrypt?: ')
-            encryptedData = aes.encrypt(base64.b64decode(binReadToB64(opData)).decode('utf-8'))
-            binWriteToFile(base64.decodebytes(encryptedData), f'{opData}.aenc')
+            encryptedData = aes.encrypt(readBinFileToString(opData))
+            writeBinToFile(encryptedData, f'{opData}.aenc')
     else:
         if(opType=='T'): #Text mode
             if(isInteractive):
@@ -253,8 +253,8 @@ if __name__ == "__main__":
         else:   #File mode
             if(isInteractive):
                 opData = input('(6/6) File to decrypt?: ')
-            decryptedData = aes.decrypt(binReadToB64(opData))
-            binWriteToFile(decryptedData, opData[0:len(opData)-5]) #Binary write deleting aenc extension
+            decryptedData = aes.decrypt(readBinFileToString(opData))
+            writeBinToFile(decryptedData, opData[0:len(opData)-5]) #Binary write deleting aenc extension
 
     files = glob.glob(f'{downloads_path}/*')
     for f in files:
