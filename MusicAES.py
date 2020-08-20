@@ -8,6 +8,7 @@ import math
 import os, sys, glob
 import hashlib
 import subprocess
+import base64
 from requests import exceptions
 from pytube import YouTube
 from AESCipher import AESCipher 
@@ -23,11 +24,11 @@ key= ''
 def printHelp():
     print("***Usage steps***")
     print("----------------------------------------")
-    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' <YoutubeLink>")
-    print("To encrypt file: AudioAES.py -e -f 'file_to_encrypt' <YoutubeLink>")
-    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' <YoutubeLink>")
-    print("To encrypt file: AudioAES.py -d -f 'file_to_encrypt' <YoutubeLink>")
-    print("If you just call the program without arguments, it will ask for them")
+    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -e -f 'file_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -d -f 'file_to_encrypt' <YoutubeLink> -s 'start_seconds' 'end_seconds'")
+    print("If you just call the program without arguments, it will ask for them in interactive mode")
 
 #Function to find the closer element in an array
 def closest(lst, K): 
@@ -102,7 +103,6 @@ def soundProcessing(file_name):
         sound_file = wave.open( f'{downloads_path}/{file_name}.wav', 'r')
         print('Conversion completed. Now starting to analize.')
         print('----------------------------------------------')
-        Wave_read.close()
         filtered_notes= noteDetect(sound_file)
         #DEBUG print("Approximated Notes: " + str(filtered_notes))
     except IOError:
@@ -122,7 +122,6 @@ def splitAudio(t1,t2,input_file):
     print('[Error] splitting file')    
     return False
 
-
 def convertToWav(file_name):
         #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
         command= f"ffmpeg -i '{downloads_path}/{file_name}.mp4' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
@@ -130,7 +129,7 @@ def convertToWav(file_name):
         print(f'Converting to wav: {file_name}')
         subprocess.call(command, shell=True)
 
-def getYoutubeMedia(isAudio=True):
+def getYoutubeMedia(ytlink, isAudio=True):
     try:
         ytlink = input('YouTube link that you will use as passphrase: ')
         print('Downloading stream (audio), wait a bit') #TODO Maybe video streams support
@@ -140,45 +139,100 @@ def getYoutubeMedia(isAudio=True):
         return stream.default_filename
     except request.exceptions.RequestException:
         print ("[Error] downloading file.")
+        sys.exit()
 
 def downloadedTrigger(stream, file_handle):
     print('Download Completed')
 
+def binReadToB64(filepath):
+    try:
+        raw_data = open(filepath, "rb").read()
+        b64_string = base64.b64encode(raw_data)
+        return b64_string
+    except IOError:
+        print('[Error] Reading file to encrypt')
+        sys.exit()
+
 if __name__ == "__main__":
-    if(sys.argv[0]=='-h' or sys.argv[0]=='--help'):
-        printHelp()
-    else:
-        file_name=getYoutubeMedia(isAudio=True)
-        print(file_name)
-        filename_no_ext = file_name[0:len(file_name)-4]
-        print(filename_no_ext)     #Just deletes .mp4
-        convertToWav(filename_no_ext)
+    ytLink = ''
+    opText = ''
+    opMode = ''
+    opType = ''
+    isInteractive = False
+    isSplitted = False
+    isInvalid = False
+    startTime = 0
+    endTime = 0
+    #Interactive Mode Questions
+    if(len(sys.argv)==1):
+        isInteractive = True
+        ytLink = input('(1/6)YouTube link that you will use as passphrase: ')
         print('(2/6) Do you wanna use audio splitting to increase security?')
-        isSplitted=input('For decrypt mode, splitting must be selected if you selected it to encypt(y/N): ')
-        if(isSplitted=='y'):
-            startTime= input('(3/6) Choose splitting start in seconds: ')
-            finishTime = input('(4/6) Choose splitting end  in seconds: ')
-            splitAudio(startTime,finishTime,filename_no_ext)
-            soundProcessing(f'{filename_no_ext}_split')
-        else:
-            soundProcessing(filename_no_ext)
+        isSplitted = input('For decrypt mode, splitting must be selected if you selected it to encypt(y/N): ')
+        startTime= input('(3/6) Choose splitting start in seconds: ')
+        endTime = input('(4/6) Choose splitting end  in seconds: ')
         opMode = input('(5/6) Do you want to encrypt or decrypt?(E/D): ')
-        opText = ''
-        key=''
-        for note in detected_notes:
-            key += note 
-        aes=AESCipher(key)
-        if(opMode=='E'):
-            opText=input('(6/6) Text to encrypt?: ')
-            print(f'Encrypted text: {aes.encrypt(opText)}')
+        opType=input('(6/6) Which kind?(T)ext or (F)ile: ')
+        #TODO INTERACTIVE MODE
+    #Print help
+    elif(sys.argv[1]=='-h' or sys.argv[1]=='--help'):
+        printHelp()
+    #Getting Arguments from console    
+    else:
+        if(sys.argv[1]=='-e'):
+            opMode = 'E'
+        elif(sys.argv[1]=='-d'):
+            opMode = 'D'
         else:
-            opText=input('(6/6) Text to decrypt?: ')
-            print(f'Decrypted text: {aes.decrypt(opText)}')
+            isInvalid = True
+        if(sys.argv[2]=='-t'):
+            opMode = 'T'
+        elif(sys.argv[2]=='-f'):
+            opMode = 'F'
+        else:
+            isInvalid = True
+        if(len(sys.argv)>4):
+            if(sys.argv[5]=='-s'):
+                isSplitted = True
+                startTime=sys.argv[6]
+                endTime=sys.argv[7]
+            else:
+                isInvalid = True
+        ytLink = sys.argv[4]
+
+    file_name=getYoutubeMedia(ytLink,isAudio=True) #TODO Set ytLink
+    print(file_name)
+    filename_no_ext = file_name[0:len(file_name)-4]
+    print(filename_no_ext)     #Just deletes .mp4
+    convertToWav(filename_no_ext) 
+    if(isSplitted):
+        startTime= input('(3/6) Choose splitting start in seconds: ')
+        finishTime = input('(4/6) Choose splitting end  in seconds: ')
+        splitAudio(startTime,finishTime,filename_no_ext)
+        soundProcessing(f'{filename_no_ext}_split')
+    else:
+        soundProcessing(filename_no_ext)
+    key=''
+    for note in detected_notes:
+        key += note 
+    aes=AESCipher(key)
+    
+    if(opMode=='E'):
+        if(isInteractive):
+            opText=input('(6/6) Text to encrypt?: ')
+        print(f'Encrypted text: {aes.encrypt(opText)}')
+        if(opType=='-f'):
+            opText=binReadToB64(argv[3])
+        else:
+            opText=argv[3]
+    else:
+        opText=input('(6/6) Text to decrypt?: ')
+        print(f'Decrypted text: {aes.decrypt(opText)}')
         #COMMENT KEY PRINTING ON PRODUCTION
         #DEBUG print ("Key: " + key)
-        files = glob.glob(f'{downloads_path}/*')
-        for f in files:
-            os.remove(f)    #Deleting remaining media files
+    files = glob.glob(f'{downloads_path}/*')
+    for f in files:
+        os.remove(f)    #Deleting remaining media files
         
 
 
