@@ -196,7 +196,7 @@ def getYoutubeMedia(ytlink, isAudio=True):
     try:
         print('Downloading stream (audio), wait a bit') #TODO Maybe video streams support
         print(ytlink)
-        yt = YouTube(str(ytlink), on_complete_callback=downloadedTrigger)
+        yt = YouTube(ytlink, on_complete_callback=downloadedTrigger)
         stream = yt.streams.filter(only_audio=isAudio).first()
         stream.download(downloads_path)
         return stream.default_filename
