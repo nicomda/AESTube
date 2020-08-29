@@ -2,14 +2,14 @@
 This is a PoC using youtube audio to encrypt text/files. It uses AES-256.
 How it's done:
 1. Download MP4 audio stream from a YouTube link.
-2. MP4 audio is converted to WAV..
+2. MP4 audio is converted to WAV.
 3. WAV is processed through FFT to extract audio frequencies.
 4. Frequencies are mapped to musical notes.
 5. These notes are used as the passphrase for AES encryption.
 6. That's all folks 😎
 
 In addition to this, I created some audio splitting mechanism that allows you to trim it, improving the security.
-## Installation
+## Installation (Read carefully. Some tweaks are needed)
 Assure that you have python3 installed on your system.
 ```sh
 #Clone this repo
