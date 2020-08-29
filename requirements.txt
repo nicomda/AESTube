@@ -1,0 +1,7 @@
+requests==2.24.0
+Wave==0.0.2
+pytube3==9.6.4
+numpy==1.19.1
+PyAudio==0.2.11
+pycryptodomex==3.9.8
+pydub==0.24.1
