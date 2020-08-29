@@ -227,11 +227,10 @@ def getYoutubeMedia(ytlink, isAudio=True):
 def downloadedTrigger(stream, file_handle):
     print('Download Completed')
 #Binary file to b64 then to utf-8 string
-def readBinFileToString(filepath):
+def readBinFile(filepath):
     try:
         raw_data = open(filepath, "rb").read()
-        b64_data = base64.b64encode(raw_data) #B64 Encoding
-        return b64_data.decode('utf-8') #To utf-8 string
+        return raw_data
     except IOError:
         print('[Error] Reading file')
         sys.exit()
@@ -239,7 +238,7 @@ def readBinFileToString(filepath):
 def writeBinToFile(data,filename):
     try:
         newFile = open(filename, 'wb')
-        newFile.write(base64.decodebytes(data)) #Convert to bytes
+        newFile.write(data) #Write binary
         newFile.close()
     except IOError:
         print('[Error] Writing to file')
@@ -286,22 +285,22 @@ if __name__ == "__main__":
         if(opType=='T'): #Text mode
             if(isInteractive):
                 opData=input('(6/6) Text to encrypt?: ')
-            print(f'Encrypted text: {aes.encrypt(opData)}')
+            print(f'Encrypted text: {aes.encrypt(opData.encode(),encode=True)}')
         else:   #File mode
             if(isInteractive):
                 opData = input('(6/6) File to encrypt?: ')
-            encryptedData = aes.encrypt(readBinFileToString(opData))
+            encryptedData = aes.encrypt(readBinFile(opData), encode=False)
             writeBinToFile(encryptedData, f'{opData}.aenc')
     else:
         if(opType=='T'): #Text mode
             if(isInteractive):
                 opData=input('(6/6) Text to decrypt?: ')
-            print(f'Decrypted text: {aes.decrypt(opData)}')
+            print(f'Decrypted text: {aes.decrypt(opData,decode=True).decode()}')
         else:   #File mode
             if(isInteractive):
                 opData = input('(6/6) File to decrypt?: ')
-            decryptedData = aes.decrypt(readBinFileToString(opData))
-            writeBinToFile(base64.b64encode(bytes(decryptedData, 'utf-8')), opData[0:len(opData)-5]) #Binary write deleting aenc extension
+            decryptedData = aes.decrypt(readBinFile(opData), decode=False)
+            writeBinToFile(decryptedData, opData[0:len(opData)-5]) #Binary write deleting aenc extension
 
     files = glob.glob(f'{downloads_path}/*')
     for f in files:
