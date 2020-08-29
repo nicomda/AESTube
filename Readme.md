@@ -10,11 +10,13 @@ How it's done:
 
 In addition to this, I created some audio splitting mechanism that allows you to trim it, improving the security.
 ## Installation
+Assure that you have python3 installed on your system.
 ```sh
 #Clone this repo
 git clone https://github.com/nicomda/AESTube.git
 
 #Install FFmpeg in your system 
+cd AESTube
 sudo chmod +x ffmpeg-installer.sh
 ./ffmpeg-installer.sh
 
@@ -25,11 +27,16 @@ pip3 install virtualenv
 python3 -m venv AESTube
 
 #Activating venv
-cd AESTube
 source ./bin/activate
 
 #Installing required libraries in the virtual enviroment
+sudo apt-get install python-pyaudio python3-pyaudio
 pip3 install -r requirements.txt
+pip3 install git+https://github.com/nficano/pytube.git --upgrade
+#At the moment there are some issues with pytube so, to make it work...
+#Go to lib/pytube/extract.py and delete this line 
+#r";ytplayer\.config\s*=\s*({.*?});",
+#Will be solved ASAP maybe updating library or changing to another. 
 ```
 ## Quick Start
 ```bash
