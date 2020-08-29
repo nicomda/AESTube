@@ -1,3 +1,4 @@
+wheel
 requests==2.24.0
 Wave==0.0.2
 pytube3==9.6.4
