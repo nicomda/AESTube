@@ -179,18 +179,22 @@ def splitAudio(t1,t2,input_file):
     return False
 
 def convertToWav(file_name):
-    #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz
-    command= f"ffmpeg -i '{downloads_path}/{file_name}.mp4' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
+    #FFMpeg conversion. Bitrate 96kbps, Audio Channels 1 (Mono), Bitrate 44.1kHz, Force Overwrite
+    command= f"ffmpeg -y -i '{downloads_path}/{file_name}.mp4' -ab 96k -ac 1 -ar 44100 -vn '{downloads_path}/{file_name}.wav'"
     if(isVerbose):
         print(command) 
     print(f'Converting to wav: {file_name}')
     try:
-        subprocess.check_call(['ffmpeg'])
-    except OSError:
+        subprocess.check_call(['ffmpeg', '-version'])
+    except subprocess.CalledProcessError:
         print('FFMpeg not installed. It is used during conversion process. To install it, just execute ffmpeg-installer.sh')
         print('Will last 5-15 min')
-        sys.exit()  
-    subprocess.call(command, shell=True)  
+        sys.exit()
+    if(isVerbose):
+        subprocess.call(command, shell=True)  
+    else:
+        FNULL = open(os.devnull, 'wb')
+        subprocess.call(command, stdout=FNULL, stderr=subprocess.STDOUT, shell=True)
         
 def getYoutubeMedia(ytlink, isAudio=True):
     try:
@@ -206,24 +210,23 @@ def getYoutubeMedia(ytlink, isAudio=True):
 
 def downloadedTrigger(stream, file_handle):
     print('Download Completed')
-
+#Binary file to b64 then to utf-8 string
 def readBinFileToString(filepath):
     try:
         raw_data = open(filepath, "rb").read()
-        b64_string = base64.b64encode(raw_data) #To base64
-        return base64.b64decode(b64_string).decode('utf-8') #To utf-8 string
+        b64_data = base64.b64encode(raw_data) #B64 Encoding
+        return b64_data.decode('utf-8') #To utf-8 string
     except IOError:
-        print('[Error] Reading file to encrypt')
+        print('[Error] Reading file')
         sys.exit()
-
+#Base 64 data to binary file
 def writeBinToFile(data,filename):
     try:
         newFile = open(filename, 'wb')
-        newFile.write(bytes(base64.decodebytes(data), 'utf-8')) #Convert to bytes
+        newFile.write(base64.decodebytes(data)) #Convert to bytes
         newFile.close()
     except IOError:
         print('[Error] Writing to file')
-
 def createDownloadFolder():
     #Creating tmp directory
     if(not os.path.isdir(downloads_path)):
@@ -282,7 +285,7 @@ if __name__ == "__main__":
             if(isInteractive):
                 opData = input('(6/6) File to decrypt?: ')
             decryptedData = aes.decrypt(readBinFileToString(opData))
-            writeBinToFile(decryptedData, opData[0:len(opData)-5]) #Binary write deleting aenc extension
+            writeBinToFile(base64.b64encode(bytes(decryptedData, 'utf-8')), opData[0:len(opData)-5]) #Binary write deleting aenc extension
 
     files = glob.glob(f'{downloads_path}/*')
     for f in files:
