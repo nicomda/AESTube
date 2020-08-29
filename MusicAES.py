@@ -20,12 +20,14 @@ duration = 0            #Audio duration in ms to control splitting
 detected_notes = []     #Array to store detected notes
 detected_freqs = []     #Array to store detected frequencies
 downloads_path = '/tmp/media_tmp'
-ytLink = opData = opMode = opType = key = output_path = input_file = ''
+ytLink = opData = opMode = opType = key = output_path = ''
 isInteractive = isSplitted = isInvalid = isVerbose = False
 startTime = endTime = 0
 
 def getArgsOptions():
     global opMode, opType, opData, isInteractive, isSplitted, isVerbose, startTime, endTime, output_path, ytLink
+    if len(sys.argv) == 1:
+        printQuickHelp()
     argv = sys.argv[1:]
     try:
         opts, args = getopt.getopt(argv, 'haedf:t:svl:o:', ["help","start_time=", "end_time=", "yt_link=", "output_path="])
@@ -35,7 +37,7 @@ def getArgsOptions():
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            printQuickHelp() #TODO EXTENDED HELP
+            printExtendedHelp()
         elif opt == '-a':
             
             isInteractive= True
@@ -63,6 +65,7 @@ def getArgsOptions():
             output_path = arg
 
 def getInteractiveOptions():
+    global isSplitted
     #Interactive Mode Questions
     print('Will be a quick setup. More advanced options are available through command line arguments.')
     ytLink = input('(1/6)YouTube link that you will use as passphrase: ')
@@ -75,14 +78,27 @@ def getInteractiveOptions():
     opMode = input('(5/6) Do you want to encrypt or decrypt?(E/D): ')
     opType = input('(6/6) Which kind?(T)ext or (F)ile: ')
 
+def printExtendedHelp():
+    print('Available arguments')
+    print('-e                               Encrypt mode')
+    print('-d                               Decrypt mode')
+    print('-t                               String data')
+    print('-f <file_to_encrypt>             File to encrypt')
+    print("-l, --yt_link= 'Youtube link'    Audio that will be used to get passphrase")
+    print('-s                               Splitted mode. It will get just a part of the audio. If you use it, you must set start_time and end_time args')
+    print('--start_time=                    Start of the split in seconds')
+    print('--end_time=                      Start of the split in seconds')
+    print('-o, --output_path=               Path where output will be created')
+    print('-a                               Interactive mode (Will ask for options)')
+    printQuickHelp()
+
 def printQuickHelp():
-    print("***Usage steps***")
+    print("***Quick Usage steps***")
     print("----------------------------------------")
-    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -e -f <file_to_encrypt> 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -d -f <file_to_encrypt> 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("If you just call the program without arguments, it will ask for them in interactive mode")
+    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -e -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AudioAES.py -d -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
 
 #Function to find the closer element in an array
 def closest(lst, K): 
