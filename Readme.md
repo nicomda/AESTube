@@ -1,4 +1,4 @@
-# AudioAES
+# AESTube
 This is a PoC using youtube audio to encrypt text/files. It uses AES-256.
 How it's done:
 1. Download MP4 audio stream from a YouTube link.
@@ -41,10 +41,10 @@ pip3 install git+https://github.com/nficano/pytube.git --upgrade
 ## Quick Start
 ```bash
 #To encrypt text: 
-./AudioAES.py -e -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'
+./AESTube.py -e -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'
 
 #To decrypt files: 
-./AudioAES.py -e -t 'filepath' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'
+./AESTube.py -e -t 'filepath' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'
 ```
 
 ### **Available arguments:**
