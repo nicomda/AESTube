@@ -38,6 +38,7 @@ def getArgsOptions():
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             printExtendedHelp()
+            sys.exit()
         elif opt == '-a':
             
             isInteractive= True
