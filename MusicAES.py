@@ -106,8 +106,8 @@ def closest(lst, K):
 
 #Function to match Hz with note name
 def matchingFreq(freq):
-    freq_array = [16.351, 18.354, 20.601, 21.827, 24.499, 27.500, 30.868] # 0 scale float values
-    notes = ['C', 'D', 'E', 'F', 'G' , 'A', 'B']
+    freq_array = [16.351, 17.324, 18.354, 19.445, 20.601, 21.827, 23.124, 24.499, 25.956, 27.500, 29.135, 30.868] # 0 scale float values
+    notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] #TODO maybe add all semitones to improve complexity
     scale_multiplier = 0    #Could be used to restrict notes by multiples
     current_note=0
     for i in range(len(freq_array)*scales):
