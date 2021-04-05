@@ -15,11 +15,6 @@ Assure that you have python3 installed on your system.
 #Clone this repo
 git clone https://github.com/nicomda/AESTube.git
 
-#Install FFmpeg in your system 
-cd AESTube
-sudo chmod +x ffmpeg-installer.sh
-./ffmpeg-installer.sh
-
 #Install if not installed
 pip3 install virtualenv
 
@@ -29,14 +24,13 @@ python3 -m venv AESTube
 #Activating venv
 source ./bin/activate
 
-#Installing required libraries in the virtual enviroment
-sudo apt-get install python-pyaudio python3-pyaudio
+#Installing required libraries in the virtual enviroment (FFMpeg, pyaudio...)
+cd AESTube
+sudo chmod +x dependencies-installer.sh
+./dependencies-installer.sh
 pip3 install -r requirements.txt
+#Must update pytube as shown to get it working
 pip3 install git+https://github.com/nficano/pytube.git --upgrade
-#At the moment there are some issues with pytube so, to make it work...
-#Go to lib/pytube/extract.py and delete this line 
-#r";ytplayer\.config\s*=\s*({.*?});",
-#Will be solved ASAP maybe updating library or changing to another. 
 ```
 ## Quick Start
 ```bash
