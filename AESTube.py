@@ -28,6 +28,7 @@ def getArgsOptions():
     global opMode, opType, opData, isInteractive, isSplitted, isVerbose, startTime, endTime, output_path, ytLink
     if len(sys.argv) == 1:
         printQuickHelp()
+        sys.exit()
     argv = sys.argv[1:]
     try:
         opts, args = getopt.getopt(argv, 'haedf:t:svl:o:', ["help","start_time=", "end_time=", "yt_link=", "output_path="])
@@ -96,10 +97,10 @@ def printExtendedHelp():
 def printQuickHelp():
     print("***Quick Usage steps***")
     print("----------------------------------------")
-    print("To encrypt text: AudioAES.py -e -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -e -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt text: AudioAES.py -d -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
-    print("To encrypt file: AudioAES.py -d -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AESTube.py -e -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AESTube.py -e -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt text: AESTube.py -d -t 'text_to_encrypt' -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
+    print("To encrypt file: AESTube.py -d -f <file_to_encrypt> -l 'YoutubeLink' -s 'start_seconds' 'end_seconds'")
 
 #Function to find the closer element in an array
 def closest(lst, K): 
